@@ -60,7 +60,7 @@ def calculate_time():
     seconds = total_seconds % 60
 
     return (
-        f"❤️ **Hammasiga💖:**\n\n"
+        f"**Hammasiga:**\n\n"
         f"🗓 **{days}** kun\n"
         f"⏰ **{hours}** soat\n"
         f"⏱ **{minutes}** daqiqa\n"
