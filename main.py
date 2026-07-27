@@ -1,6 +1,6 @@
 import asyncio
 
-# Python 3.12+ versiyalarda event loop xatosini tuzatish
+# Python 3.12+ event loop fix
 try:
     asyncio.get_event_loop()
 except RuntimeError:
@@ -8,13 +8,35 @@ except RuntimeError:
 
 import os
 from datetime import datetime
+from threading import Thread
+from flask import Flask
 from pyrogram import Client, filters
 
+# Render portini ushlash uchun kichik veb-server
+web_app = Flask("")
+
+
+@web_app.route("/")
+def home():
+    return "Userbot 24/7 ishlamoqda!"
+
+
+def run_web():
+    port = int(os.environ.get("PORT", 8080))
+    web_app.run(host="0.0.0.0", port=port)
+
+
+def keep_alive():
+    t = Thread(target=run_web)
+    t.daemon = True
+    t.start()
+
+
+# USERBOT KODI
 API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION_STRING = os.environ.get("SESSION_STRING")
 
-# 2023-yil 8-martdan hisoblaydi
 START_DATE = datetime(2023, 3, 8, 0, 0, 0)
 
 app = Client(
@@ -55,4 +77,7 @@ async def start_counter(client, message):
         print(f"Xatolik: {e}")
 
 
+# Veb server va botni ishga tushirish
+keep_alive()
+print("Userbot Render serverida ishga tushdi!")
 app.run()
