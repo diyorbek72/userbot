@@ -1,4 +1,11 @@
 import asyncio
+
+# Python 3.12+ versiyalarda event loop xatosini tuzatish
+try:
+    asyncio.get_event_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
 import os
 from datetime import datetime
 from pyrogram import Client, filters
