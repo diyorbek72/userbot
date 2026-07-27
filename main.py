@@ -11,6 +11,7 @@ from datetime import datetime
 from threading import Thread
 from flask import Flask
 from pyrogram import Client, filters
+from pyrogram.errors import FloodWait
 
 # Render portini ushlash uchun kichik veb-server
 web_app = Flask("")
@@ -59,7 +60,7 @@ def calculate_time():
     seconds = total_seconds % 60
 
     return (
-        f"❤️ **2023-yil 8-martdan beri birga:**\n\n"
+        f"❤️ **Hammasiga💖:**\n\n"
         f"🗓 **{days}** kun\n"
         f"⏰ **{hours}** soat\n"
         f"⏱ **{minutes}** daqiqa\n"
@@ -71,13 +72,16 @@ def calculate_time():
 async def start_counter(client, message):
     try:
         while True:
-            await message.edit_text(calculate_time())
-            await asyncio.sleep(3)
+            try:
+                await message.edit_text(calculate_time())
+                await asyncio.sleep(1)  # HAR 1 SONIYADA YANGILANADI
+            except FloodWait as e:
+                # Telegram ko'p tahrirlash uchun vaqtinchalik cheklov qo'ysa, kutiladi
+                await asyncio.sleep(e.value)
     except Exception as e:
         print(f"Xatolik: {e}")
 
 
-# Veb server va botni ishga tushirish
 keep_alive()
 print("Userbot Render serverida ishga tushdi!")
 app.run()
