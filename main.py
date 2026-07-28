@@ -40,7 +40,8 @@ SESSION_STRING = os.environ.get("SESSION_STRING")
 
 # ============================================================
 # AVTO-KOMMENTARIYA SOZLAMALARI:
-TARGET_CHANNEL = "@diorvs99"  # Kanal usernamesi
+# Kanal usernamesi (@ siz yozing)
+TARGET_CHANNEL_USERNAME = "diorvs99"
 COMMENT_TEXT = "Birinchi! ❤️"  # Avtomatik yoziladigan matn
 # ============================================================
 
@@ -67,7 +68,7 @@ def calculate_time():
     seconds = total_seconds % 60
 
     return (
-        f"❤️ **2023-yil 8-martdan beri birga:**\n\n"
+        f"**Hammasiga:**\n\n"
         f"🗓 **{days}** kun\n"
         f"⏰ **{hours}** soat\n"
         f"⏱ **{minutes}** daqiqa\n"
@@ -88,19 +89,24 @@ async def start_counter(client, message):
         print(f"Xatolik: {e}")
 
 
-# 2. AVTO-KOMMENTARIYA FUNKSIYASI (To'g'rilangan variant)
-@app.on_message(filters.chat("@diorvs99") & filters.channel)
-async def auto_comment(client, message):
+# 2. AVTO-KOMMENTARIYA FUNKSIYASI (Guruhdagi avto-postlarni ushlash)
+@app.on_message(filters.group)
+async def auto_comment_in_group(client, message):
     try:
-        # Telegram kanal postiga komment yozish uchun comment_to_message_id ishlatiladi
-        await client.send_message(
-            chat_id=message.chat.id,
-            text="inao?",
-            comment_to_message_id=message.id,
-        )
-        print(f"Post [{message.id}] ga avtomatik kommentariya yuborildi!")
+        # Kanaldan guruhga avtomatik tushgan postni ushlash
+        if message.is_automatic_forward:
+            # Post o'zimiz xohlagan kanaldan ekanligini tekshirish
+            if (
+                message.sender_chat
+                and message.sender_chat.username == "@diorvs99"
+            ):
+                # Guruhdagi o'sha avto-postga darhol reply yozamiz
+                await message.reply_text("inao?")
+                print(
+                    f"Post [{message.id}] ga guruhda avtomatik komment yozildi!"
+                )
     except Exception as e:
-        print(f"Kommentariya yozishda xatolik: {e}")
+        print(f"Guruhda komment yozishda xatolik: {e}")
 
 
 keep_alive()
