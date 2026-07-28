@@ -40,11 +40,8 @@ SESSION_STRING = os.environ.get("SESSION_STRING")
 
 # ============================================================
 # AVTO-KOMMENTARIYA SOZLAMALARI:
-# Kanal usernamesini yozing (masalan: "@kanal_usernamasi")
-TARGET_CHANNEL = "@kanal_usernamasi"  # <-- SHU YERGA KANAL USERNAMESINI YOZING!
-
-# Postga avtomatik yoziladigan matn:
-COMMENT_TEXT = "Birinchi! ❤️"  # <-- SHU YERGA MATNNI YOZING!
+TARGET_CHANNEL = "@diorvs99"  # Kanal usernamesi
+COMMENT_TEXT = "Birinchi! ❤️"  # Avtomatik yoziladigan matn
 # ============================================================
 
 START_DATE = datetime(2023, 3, 8, 0, 0, 0)
@@ -91,15 +88,19 @@ async def start_counter(client, message):
         print(f"Xatolik: {e}")
 
 
-# 2. AVTO-KOMMENTARIYA FUNKSIYASI (1-bo'lib komment yozish)
-@app.on_message(filters.chat("@diorvs99"))
+# 2. AVTO-KOMMENTARIYA FUNKSIYASI (To'g'rilangan variant)
+@app.on_message(filters.chat("@diorvs99) & filters.channel)
 async def auto_comment(client, message):
     try:
-        # Yangi postga instant 1-bo'lib komment yozadi
-        await message.reply_text("inao?")
-        print(f"Post [{message.id}] ga avtomatik kommentariya yozildi!")
+        # Telegram kanal postiga komment yozish uchun comment_to_message_id ishlatiladi
+        await client.send_message(
+            chat_id=message.chat.id,
+            text="inao?",
+            comment_to_message_id=message.id,
+        )
+        print(f"Post [{message.id}] ga avtomatik kommentariya yuborildi!")
     except Exception as e:
-        print(f"Kommentariy yozishda xatolik: {e}")
+        print(f"Kommentariya yozishda xatolik: {e}")
 
 
 keep_alive()
