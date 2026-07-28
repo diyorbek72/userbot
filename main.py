@@ -92,11 +92,11 @@ async def start_counter(client, message):
 
 
 # 2. AVTO-KOMMENTARIYA FUNKSIYASI (1-bo'lib komment yozish)
-@app.on_message(filters.chat(@diorvs99))
+@app.on_message(filters.chat("@diorvs99"))
 async def auto_comment(client, message):
     try:
         # Yangi postga instant 1-bo'lib komment yozadi
-        await message.reply_text(inao?)
+        await message.reply_text("inao?")
         print(f"Post [{message.id}] ga avtomatik kommentariya yozildi!")
     except Exception as e:
         print(f"Kommentariy yozishda xatolik: {e}")
