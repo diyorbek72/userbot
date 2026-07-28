@@ -89,7 +89,7 @@ async def start_counter(client, message):
 
 
 # 2. AVTO-KOMMENTARIYA FUNKSIYASI (To'g'rilangan variant)
-@app.on_message(filters.chat("@diorvs99) & filters.channel)
+@app.on_message(filters.chat("@diorvs99") & filters.channel)
 async def auto_comment(client, message):
     try:
         # Telegram kanal postiga komment yozish uchun comment_to_message_id ishlatiladi
