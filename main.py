@@ -40,8 +40,8 @@ SESSION_STRING = os.environ.get("SESSION_STRING")
 
 # ============================================================
 # AVTO-KOMMENTARIYA SOZLAMALARI:
-# Kanal usernamesi (@ siz yozing)
-TARGET_CHANNEL_USERNAME = "diorvs99"
+TARGET_CHANNEL = "diorvs99"  # Sizning kanalingiz
+TARGET_GROUP = "hshsuahabaja"  # Sizning muhokama guruhingiz
 COMMENT_TEXT = "Birinchi! ❤️"  # Avtomatik yoziladigan matn
 # ============================================================
 
@@ -68,7 +68,7 @@ def calculate_time():
     seconds = total_seconds % 60
 
     return (
-        f"**Hammasiga:**\n\n"
+        f"❤️ **2023-yil 8-martdan beri birga:**\n\n"
         f"🗓 **{days}** kun\n"
         f"⏰ **{hours}** soat\n"
         f"⏱ **{minutes}** daqiqa\n"
@@ -89,24 +89,22 @@ async def start_counter(client, message):
         print(f"Xatolik: {e}")
 
 
-# 2. AVTO-KOMMENTARIYA FUNKSIYASI (Guruhdagi avto-postlarni ushlash)
-@app.on_message(filters.group)
+# 2. AVTO-KOMMENTARIYA FUNKSIYASI (Guruhda avto-postga instant reply)
+@app.on_message(filters.chat(TARGET_GROUP) | filters.chat(f"@{TARGET_GROUP}"))
 async def auto_comment_in_group(client, message):
     try:
-        # Kanaldan guruhga avtomatik tushgan postni ushlash
-        if message.is_automatic_forward:
-            # Post o'zimiz xohlagan kanaldan ekanligini tekshirish
-            if (
-                message.sender_chat
-                and message.sender_chat.username == "@diorvs99"
-            ):
-                # Guruhdagi o'sha avto-postga darhol reply yozamiz
-                await message.reply_text("inao?")
-                print(
-                    f"Post [{message.id}] ga guruhda avtomatik komment yozildi!"
-                )
+        # Kanaldan guruhga tushgan post bo'lsa
+        if (
+            message.is_automatic_forward
+            or message.forward_from_chat
+            or message.sender_chat
+        ):
+            await message.reply_text(COMMENT_TEXT)
+            print(
+                f"MUVAFFAQIYATLI: [{message.id}] postga guruhda komment yozildi!"
+            )
     except Exception as e:
-        print(f"Guruhda komment yozishda xatolik: {e}")
+        print(f"Guruhda komment xatosi: {e}")
 
 
 keep_alive()
