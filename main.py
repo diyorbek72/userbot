@@ -40,8 +40,7 @@ SESSION_STRING = os.environ.get("SESSION_STRING")
 
 # ============================================================
 # AVTO-KOMMENTARIYA SOZLAMALARI:
-TARGET_CHANNEL = "diorvs99"  # Sizning kanalingiz
-TARGET_GROUP = "hshsuahabaja"  # Sizning muhokama guruhingiz
+TARGET_CHANNEL = "@diorvs99"  # Kanal usernamesi
 COMMENT_TEXT = "Birinchi! ❤️"  # Avtomatik yoziladigan matn
 # ============================================================
 
@@ -89,22 +88,19 @@ async def start_counter(client, message):
         print(f"Xatolik: {e}")
 
 
-# 2. AVTO-KOMMENTARIYA FUNKSIYASI (Guruhda avto-postga instant reply)
-@app.on_message(filters.chat(TARGET_GROUP) | filters.chat(f"@{TARGET_GROUP}"))
-async def auto_comment_in_group(client, message):
+# 2. AVTO-KOMMENTARIYA FUNKSIYASI (To'g'rilangan variant)
+@app.on_message(filters.chat(TARGET_CHANNEL) & filters.channel)
+async def auto_comment(client, message):
     try:
-        # Kanaldan guruhga tushgan post bo'lsa
-        if (
-            message.is_automatic_forward
-            or message.forward_from_chat
-            or message.sender_chat
-        ):
-            await message.reply_text(COMMENT_TEXT)
-            print(
-                f"MUVAFFAQIYATLI: [{message.id}] postga guruhda komment yozildi!"
-            )
+        # Telegram kanal postiga komment yozish uchun comment_to_message_id ishlatiladi
+        await client.send_message(
+            chat_id=message.chat.id,
+            text=COMMENT_TEXT,
+            comment_to_message_id=message.id,
+        )
+        print(f"Post [{message.id}] ga avtomatik kommentariya yuborildi!")
     except Exception as e:
-        print(f"Guruhda komment xatosi: {e}")
+        print(f"Kommentariya yozishda xatolik: {e}")
 
 
 keep_alive()
