@@ -1,83 +1,70 @@
 import os
-import random
 import asyncio
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import threading
 from telethon import TelegramClient, events
-from telethon.sessions import StringSession
-from telethon.tl.functions.channels import GetFullChannelRequest
-from telethon.tl.functions.messages import SendMessageRequest
+from telethon.errors import FloodWaitError
 
-# =========================
-# SOZLAMALAR
-# =========================
 API_ID = 12203269
-API_HASH = "5bfb8b0e68d86a267afe2ebe87fb2335"
-SESSION_STRING = os.environ.get("SESSION_STRING")
+API_HASH = os.environ["API_HASH"]
 
-CHANNEL = "ysysysysyssy"  # Kanal username
-COMMENT = "окени ами?"
-# =========================
+DISCUSSION_ID = -1004470296857
+COMMENT = "🔥 Zo'r post!"
 
-client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
+client = TelegramClient(
+    "userbot",
+    API_ID,
+    API_HASH,
+    connection_retries=None,
+    retry_delay=1
+)
 
-group_input_peer = None
-target_group_id = None
+processed = set()
 
-# Render uxlab qolmasligi uchun
-class SimpleHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Ultra-Fast Sniper Active")
 
-def run_dummy_server():
-    port = int(os.environ.get("PORT", 8080))
-    server = HTTPServer(("0.0.0.0", port), SimpleHandler)
-    server.serve_forever()
+@client.on(events.NewMessage(chats=DISCUSSION_ID))
+async def handler(event):
+    message = event.message
 
-async def main():
-    global group_input_peer, target_group_id
-
-    print("Userbot ishga tushmoqda...")
-    await client.start()
-
-    # Kanal va Guruhni oldindan to'liq xotiraga yuklab "InputPeer" tayyorlaymiz
-    channel_entity = await client.get_entity(CHANNEL)
-    full_channel = await client(GetFullChannelRequest(channel_entity))
-    
-    raw_group_id = full_channel.full_chat.linked_chat_id
-    if not raw_group_id:
-        print("[-] Kanalga guruh ulanmagan!")
+    if message.reply_to is not None:
         return
 
-    # Guruhning to'liq ob'ektini va InputPeer manzilini olamiz
-    group_entity = await client.get_entity(raw_group_id)
-    group_input_peer = await client.get_input_entity(group_entity)
-    target_group_id = group_entity.id
+    if message.action:
+        return
 
-    print(f"[+] To'g'ridan-to'g'ri Guruh nishonga olindi! Guruh ID: {target_group_id}")
-    print("⚡ SNAYPER TAYYOR: Millisekundlarda javob beradi!\n")
+    if message.id in processed:
+        return
 
-    # To'g'ridan-to'g'ri faqat shu guruhni tinglaymiz
-    @client.on(events.NewMessage(chats=group_entity))
-    async def ultra_fast_handler(event):
-        # Guruhga tushgan post kanaldan kelganini tekshirish
-        if event.fwd_from or event.is_channel:
-            # Hech qanday keraksiz tekshiruvlarsiz TO'G'RIDAN-TO'G'RI RAW SO'ROV YUBORAMIZ:
-            try:
-                await client(SendMessageRequest(
-                    peer=group_input_peer,
-                    message=COMMENT,
-                    reply_to_msg_id=event.id,
-                    random_id=random.randint(0, 9223372036854775807)
-                ))
-                print(f"[🔥 1-O'RIN] Post #{event.id} ga soniya ulushida komment ketdi!")
-            except Exception as e:
-                print(f"[!] Xatolik: {e}")
+    processed.add(message.id)
+
+    try:
+        await client.send_message(
+            DISCUSSION_ID,
+            COMMENT,
+            reply_to=message.id
+        )
+
+        print(f"[+] COMMENT SENT: {message.id}")
+
+    except FloodWaitError as e:
+        print(f"[!] FloodWait: {e.seconds}s")
+        await asyncio.sleep(e.seconds)
+
+    except Exception as e:
+        print(f"[!] ERROR: {e}")
+
+
+async def main():
+    print("Starting...")
+
+    await client.start()
+
+    me = await client.get_me()
+
+    print(f"Logged in: @{me.username or me.first_name}")
+    print(f"Discussion: {DISCUSSION_ID}")
+    print("Listening...")
 
     await client.run_until_disconnected()
 
+
 if __name__ == "__main__":
-    threading.Thread(target=run_dummy_server, daemon=True).start()
-    client.loop.run_until_complete(main())
+    asyncio.run(main())
