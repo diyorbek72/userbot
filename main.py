@@ -35,32 +35,49 @@ async def main():
     try:
         # Kanal va uning komment guruhini xotiraga olish
         channel_entity = await client.get_entity(CHANNEL)
+        target_channel_id = channel_entity.id
+
         full_channel = await client(GetFullChannelRequest(channel_entity))
-        
         raw_group_id = full_channel.full_chat.linked_chat_id
+        
         if not raw_group_id:
             print("[-] XATO: Kanalga hech qanday komment guruhi ulanmagan!", flush=True)
             return
 
         group_entity = await client.get_entity(raw_group_id)
-        print(f"[+] Guruh ulandi! Guruh ID: {group_entity.id}", flush=True)
-        print("⚡ SNAYPER TAYYOR: Yangi post chiqishi bilan xatoliksiz komment yozadi!\n", flush=True)
+        print(f"[+] Ulandi! Kanal ID: {target_channel_id} | Guruh ID: {group_entity.id}", flush=True)
+        print("⚡ SNAYPER TAYYOR: Faqat kanaldan kelgan postlarga yozadi!\n", flush=True)
 
-        # To'g'ridan-to'g'ri komment guruhini tinglash
+        # Guruhni tinglash
         @client.on(events.NewMessage(chats=group_entity))
         async def fast_commenter(event):
-            # Kanaldan avtomat ko'chirilgan post yoki kanal nomidan chiqqan xabarni aniqlash
-            if event.fwd_from or event.is_channel or event.sender_id == channel_entity.id:
-                try:
-                    # Telethon 1.44 uchun eng tezkor va xatosiz reply
-                    await client.send_message(
-                        entity=group_entity,
-                        message=COMMENT,
-                        reply_to=event.id
-                    )
-                    print(f"[🔥 BIRINCHI] Post #{event.id} ga komment yuborildi!", flush=True)
-                except Exception as e:
-                    print(f"[!] Xatolik: {e}", flush=True)
+            is_target_channel_post = False
+
+            # 1. Telegram kanaldan avtomat ko'chirgan post bo'lsa
+            if event.fwd_from:
+                fwd_channel_id = getattr(event.fwd_from.from_id, 'channel_id', None)
+                if fwd_channel_id == target_channel_id or event.fwd_from.channel_post:
+                    is_target_channel_post = True
+
+            # 2. Xabar to'g'ridan-to'g'ri kanal nomidan chiqsa
+            sender_channel_id = getattr(event.from_id, 'channel_id', None)
+            if sender_channel_id == target_channel_id:
+                is_target_channel_post = True
+
+            # Agar oddiy odam yozgan bo'lsa, o'tkazib yuboramiz
+            if not is_target_channel_post:
+                return
+
+            # Faqat maqsadli postga tezkor reply yuborish
+            try:
+                await client.send_message(
+                    entity=group_entity,
+                    message=COMMENT,
+                    reply_to=event.id
+                )
+                print(f"[🔥 BIRINCHI] Kanal posti #{event.id} ga komment yozildi!", flush=True)
+            except Exception as e:
+                print(f"[!] Xatolik: {e}", flush=True)
 
     except Exception as e:
         print(f"[!] Sozlashda xatolik: {e}", flush=True)
