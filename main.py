@@ -1,87 +1,82 @@
-import asyncio
-
-# Python 3.12+ event loop fix
-try:
-    asyncio.get_event_loop()
-except RuntimeError:
-    asyncio.set_event_loop(asyncio.new_event_loop())
-
 import os
-from datetime import datetime
-from threading import Thread
-from flask import Flask
-from pyrogram import Client, filters
-from pyrogram.errors import FloodWait
+import asyncio
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
+from telethon import TelegramClient, events
+from telethon.sessions import StringSession
+from telethon.errors import FloodWaitError
 
-# Render portini ushlash uchun kichik veb-server
-web_app = Flask("")
-
-
-@web_app.route("/")
-def home():
-    return "Userbot 24/7 ishlamoqda!"
-
-
-def run_web():
-    port = int(os.environ.get("PORT", 8080))
-    web_app.run(host="0.0.0.0", port=port)
-
-
-def keep_alive():
-    t = Thread(target=run_web)
-    t.daemon = True
-    t.start()
-
-
-# USERBOT KODI
-API_ID = int(os.environ.get("API_ID"))
-API_HASH = os.environ.get("API_HASH")
+# =========================
+# SOZLAMALAR
+# =========================
+API_ID = 12203269
+API_HASH = "5bfb8b0e68d86a267afe2ebe87fb2335"
+# Renderdagi Environment Variable orqali o'qiydi
 SESSION_STRING = os.environ.get("SESSION_STRING")
 
-START_DATE = datetime(2023, 3, 8, 0, 0, 0)
+CHANNEL = "@ysysysysyssy"
+COMMENT = "окени ами?"
+# =========================
 
-app = Client(
-    "my_userbot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    session_string=SESSION_STRING,
-)
+client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
+@client.on(events.NewMessage(chats=CHANNEL))
+async def new_post(event):
+    if not event.is_channel:
+        return
 
-def calculate_time():
-    now = datetime.now()
-    diff = now - START_DATE
+    message = event.message
+    if not message.replies:
+        print(f"[-] Post #{message.id}: discussion yo'q")
+        return
 
-    days = diff.days
-    total_seconds = diff.seconds
-
-    hours = total_seconds // 3600
-    minutes = (total_seconds % 3600) // 60
-    seconds = total_seconds % 60
-
-    return (
-        f"**Hammasiga:**\n\n"
-        f"🗓 **{days}** kun\n"
-        f"⏰ **{hours}** soat\n"
-        f"⏱ **{minutes}** daqiqa\n"
-        f"⚡️ **{seconds}** soniya"
-    )
-
-
-@app.on_message(filters.me & filters.text & filters.regex("^¥$"))
-async def start_counter(client, message):
+    print(f"[+] Yangi post: {message.id}")
     try:
-        while True:
-            try:
-                await message.edit_text(calculate_time())
-                await asyncio.sleep(1)  # HAR 1 SONIYADA YANGILANADI
-            except FloodWait as e:
-                # Telegram ko'p tahrirlash uchun vaqtinchalik cheklov qo'ysa, kutiladi
-                await asyncio.sleep(e.value)
+        discussion = await client(
+            __import__("telethon").functions.messages.GetDiscussionMessageRequest(
+                peer=CHANNEL,
+                msg_id=message.id
+            )
+        )
+        if not discussion.messages:
+            return
+
+        discussion_message = discussion.messages[0]
+        discussion_chat = discussion.chats[0]
+
+        await client.send_message(
+            discussion_chat,
+            COMMENT,
+            reply_to=discussion_message.id
+        )
+        print(f"[+] COMMENT YUBORILDI | post={message.id}")
+
+    except FloodWaitError as e:
+        print(f"[!] FloodWait: {e.seconds}s kutamiz")
+        await asyncio.sleep(e.seconds)
     except Exception as e:
-        print(f"Xatolik: {e}")
+        print(f"[!] Xatolik: {e}")
 
+# Render o'chib qolmasligi uchun soxta port ochish
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Userbot 24/7 ishlayapti!")
 
-keep_alive()
-print("Userbot Render serverida ishga tushdi!")
-app.run()
+def run_dummy_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), SimpleHandler)
+    server.serve_forever()
+
+async def main():
+    print("Userbot ishga tushmoqda...")
+    await client.start()
+    me = await client.get_me()
+    print(f"Ulandi: @{me.username or me.first_name}")
+    print("Kanal postlari kutilmoqda...\n")
+    await client.run_until_disconnected()
+
+if __name__ == "__main__":
+    threading.Thread(target=run_dummy_server, daemon=True).start()
+    client.loop.run_until_complete(main())
