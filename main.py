@@ -1,175 +1,81 @@
 import os
-import base64
 import asyncio
-
-from aiohttp import web
 from telethon import TelegramClient, events
-from telethon.errors import FloodWaitError
-
+from telethon.sessions import StringSession
+from telethon.tl.types import UpdateNewChannelMessage, Message
+from telethon.tl.functions.channels import GetFullChannelRequest
+from telethon.tl.functions.messages import SendMessageRequest
 
 # =========================
-# CONFIG
+# SOZLAMALAR
 # =========================
-
 API_ID = 12203269
 API_HASH = "5bfb8b0e68d86a267afe2ebe87fb2335"
+SESSION_STRING = os.environ.get("SESSION_STRING")
 
-DISCUSSION_ID = -1004470296857
+CHANNEL = "ysysysysyssy"
 COMMENT = "окени ами?"
-
-PORT = int(os.environ.get("PORT", 10000))
-
-
-# =========================
-# RESTORE SESSION
 # =========================
 
-session_b64 = os.environ["SESSION_B64"]
+client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
-with open("userbot.session", "wb") as f:
-    f.write(base64.b64decode(session_b64))
+group_input_peer = None
+target_group_num_id = None
 
-print("[+] Session restored")
-
-
-# =========================
-# TELEGRAM CLIENT
-# =========================
-
-client = TelegramClient(
-    "userbot",
-    API_ID,
-    API_HASH,
-    connection_retries=None,
-    retry_delay=1
-)
-
-processed = set()
-
-
-# =========================
-# TELEGRAM EVENT
-# =========================
-
-@client.on(events.NewMessage(chats=DISCUSSION_ID))
-async def handler(event):
-
-    message = event.message
-
-    # Faqat root message
-    if message.reply_to is not None:
-        return
-
-    # Service message
-    if message.action:
-        return
-
-    # Duplicate
-    if message.id in processed:
-        return
-
-    processed.add(message.id)
-
-    try:
-        await client.send_message(
-            DISCUSSION_ID,
-            COMMENT,
-            reply_to=message.id
-        )
-
-        print(
-            f"[+] COMMENT SENT | "
-            f"message={message.id}"
-        )
-
-    except FloodWaitError as e:
-        print(f"[!] FloodWait: {e.seconds}s")
-        await asyncio.sleep(e.seconds)
-
-    except Exception as e:
-        print(
-            f"[!] ERROR: "
-            f"{type(e).__name__}: {e}"
-        )
-
-
-# =========================
-# WEB SERVER
-# =========================
-
-async def health(request):
-    return web.Response(text="OK")
-
+# Render uxlab qolmasligi uchun yengil server
+async def handle_ping(reader, writer):
+    writer.write(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK")
+    await writer.drain()
+    writer.close()
 
 async def start_web_server():
-    app = web.Application()
-
-    app.router.add_get("/", health)
-    app.router.add_get("/health", health)
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-
-    site = web.TCPSite(
-        runner,
-        "0.0.0.0",
-        PORT
-    )
-
-    await site.start()
-
-    print(f"[+] Web server started on port {PORT}")
-
-
-# =========================
-# TELEGRAM
-# =========================
-
-async def start_telegram():
-
-    print("[+] Starting Telegram...")
-
-    await client.connect()
-
-    if not await client.is_user_authorized():
-        print("[!] ERROR: Session is not authorized!")
-        return
-
-    me = await client.get_me()
-
-    print("--------------------------------")
-    print("Telegram Auto Comment Userbot")
-    print("--------------------------------")
-    print(
-        f"Account: "
-        f"@{me.username or me.first_name}"
-    )
-    print(f"Discussion: {DISCUSSION_ID}")
-    print(f"Comment: {COMMENT}")
-    print("Listening...")
-    print("--------------------------------")
-
-    await client.run_until_disconnected()
-
-
-# =========================
-# MAIN
-# =========================
+    port = int(os.environ.get("PORT", 10000))
+    return await asyncio.start_server(handle_ping, "0.0.0.0", port)
 
 async def main():
-
-    # MUHIM:
-    # Avval portni ochamiz.
-    # Telegram connection undan keyin boshlanadi.
+    global group_input_peer, target_group_num_id
 
     await start_web_server()
+    print("Userbot ishga tushmoqda...", flush=True)
+    await client.start()
 
-    telegram_task = asyncio.create_task(
-        start_telegram()
-    )
+    # Guruh ma'lumotlarini tayyorlab olamiz
+    channel_entity = await client.get_entity(CHANNEL)
+    full_channel = await client(GetFullChannelRequest(channel_entity))
+    
+    raw_group_id = full_channel.full_chat.linked_chat_id
+    if not raw_group_id:
+        print("[-] Kanalga guruh ulanmagan!", flush=True)
+        return
 
-    await telegram_task
+    group_entity = await client.get_entity(raw_group_id)
+    group_input_peer = await client.get_input_entity(group_entity)
+    target_group_num_id = group_entity.id
 
+    print(f"[+] RAW Tinglovchi yoqildi! Guruh ID: {target_group_num_id}", flush=True)
+    print("⚡ MAKSIMAL TEZLIK: Telegram xom yangilanishlari tinglanmoqda...\n", flush=True)
+
+    # Telethon filtrlarisiz, to'g'ridan-to'g'ri Telegram server paketini ilib olamiz
+    @client.on(events.Raw(UpdateNewChannelMessage))
+    async def raw_packet_sniper(update):
+        msg = update.message
+        
+        # Faqat maqsadli guruh va post xabarlari uchun
+        if isinstance(msg, Message) and getattr(msg.peer_id, 'channel_id', None) == target_group_num_id:
+            if msg.fwd_from or msg.post:
+                # 0.01 soniyada xabar uchadi
+                try:
+                    await client(SendMessageRequest(
+                        peer=group_input_peer,
+                        message=COMMENT,
+                        reply_to_msg_id=msg.id,
+                        random_id=int.from_bytes(os.urandom(8), 'big', signed=True)
+                    ))
+                    print(f"[🔥 BIRINCHI] Post #{msg.id} ga RAW-komment yuborildi!", flush=True)
+                except Exception as e:
+                    print(f"[!] Xatolik: {e}", flush=True)
+
+    await client.run_until_disconnected()
 
 if __name__ == "__main__":
     asyncio.run(main())
