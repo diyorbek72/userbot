@@ -11,7 +11,7 @@ API_ID = 12203269
 API_HASH = "5bfb8b0e68d86a267afe2ebe87fb2335"
 SESSION_STRING = os.environ.get("SESSION_STRING")
 
-CHANNEL = "ysysysysyssy"  # Kanal username
+CHANNEL = "aslamboi"  # Kanal username
 COMMENT = "окени ами?"
 # =========================
 
