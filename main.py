@@ -19,7 +19,14 @@ client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
 # Render uchun server
 async def handle_ping(reader, writer):
-    writer.write(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK")
+    # Brauzer uchun chiroyliroq javob
+    html = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"
+    html += "<html><body style='background:black; color:lime; text-align:center; padding-top:20%; font-family:sans-serif;'>"
+    html += "<h1>🚀 Userbot 24/7 Aktiv!</h1>"
+    html += "<p>Hammasi joyida, bot yangi postlarni kutyapti...</p>"
+    html += "</body></html>"
+    
+    writer.write(html.encode())
     await writer.drain()
     writer.close()
 
